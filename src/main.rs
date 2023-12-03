@@ -1,30 +1,77 @@
-use regex::Regex;
+fn main() {
+    let file_path: &str = "./src/input.txt";
+    let content: String = std::fs::read_to_string(file_path).expect("should read from file");
+    let input_vector = content.lines().collect::<Vec<&str>>();
 
-fn main() {}
+    let sum_vector: i32 = input_vector.iter().map(|&input| {parse_input_using_aho_corasick(input).parse::<i32>().unwrap()}).sum();
+    let final_sum = modified_sum_of_input_vector(input_vector);
+    println!("{}", sum_vector);
+    println!("{}", final_sum)}
 
-fn combine_first_and_last_of_any_acceptable_target_in_input(
-    input: &str,
-    acceptable_targets: Vec<&str>,
-) -> Vec<String> {
-    let v: Vec<&str> = input.split(char::is_numeric).collect();
-    let mut data_store: Vec<String> = Vec::with_capacity(2);
 
-    let first_find: Option<&&str> = v.iter().find(|&&element| {
-        acceptable_targets
-            .iter()
-            .any(|&target_element| target_element == element)
-    });
+// // // // // PART 2 // // // // //
 
-    let last_find: Option<&&str> = v.iter().rfind(|&&element| {
-        acceptable_targets
-            .iter()
-            .any(|&target_element| target_element == element)
-    });
-
-    data_store.push(String::from(first_find.unwrap().to_owned()));
-    data_store.push(String::from(last_find.unwrap().to_owned()));
-    data_store
+pub fn modified_sum_of_input_vector(input: Vec<&str>) -> i32 {
+    input
+        .iter()
+        .map(|parsed_result| {
+            parse_input_using_aho_corasick(parsed_result)
+                .parse::<i32>()
+                .unwrap()
+        })
+        .sum()
 }
+fn convert_format_from_word_to_number(input: &str) -> i16 {
+    let conversion: &str = match input {
+        "one" => "1",
+        "two" => "2",
+        "three" => "3",
+        "four" => "4",
+        "five" => "5",
+        "six" => "6",
+        "seven" => "7",
+        "eight" => "8",
+        "nine" => "9",
+        "1" => "1",
+        "2" => "2",
+        "3" => "3",
+        "4" => "4",
+        "5" => "5",
+        "6" => "6",
+        "7" => "7",
+        "8" => "8",
+        "9" => "9",
+        _ => "oops",
+    };
+
+    conversion.parse().unwrap()
+}
+
+fn parse_input_using_aho_corasick(input: &str) -> String {
+    let patterns = &[
+        "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "1", "2", "3", "4",
+        "5", "6", "7", "8", "9",
+    ];
+    let haystack = input;
+
+    let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
+    let mut matches = vec![];
+    for mat in ac.find_iter(haystack) {
+        matches.push(mat);
+    }
+
+    let first_match = matches.get(0).unwrap();
+    let last_match = matches.get(matches.len() - 1).unwrap();
+
+    let first_result =
+        convert_format_from_word_to_number(&haystack[first_match.start()..first_match.end()]);
+    let last_result =
+        convert_format_from_word_to_number(&haystack[last_match.start()..last_match.end()]);
+
+    format!("{}{}", first_result, last_result)
+}
+
+// // // // // PART 1 // // // // //
 
 fn part_1() {
     let file_path: &str = "./src/input.txt";
@@ -34,7 +81,7 @@ fn part_1() {
     println!("{}", final_sum);
 }
 
-pub fn sum_of_input_vector(input: Vec<&str>) -> i32 {
+fn sum_of_input_vector(input: Vec<&str>) -> i32 {
     input
         .iter()
         .map(|parsed_result| {
@@ -45,7 +92,7 @@ pub fn sum_of_input_vector(input: Vec<&str>) -> i32 {
         .sum()
 }
 
-pub fn isolate_first_and_last_number_as_string(input: &str) -> String {
+fn isolate_first_and_last_number_as_string(input: &str) -> String {
     let mut data_store: Vec<String> = vec![];
 
     let _ = &input.chars().try_for_each(|c| {
@@ -69,6 +116,8 @@ pub fn isolate_first_and_last_number_as_string(input: &str) -> String {
     data_store.iter().map(|x| x.to_string()).collect::<String>()
 }
 
+// // // // // // // // // //
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -82,14 +131,68 @@ mod tests {
     }
 
     #[test]
-    fn test_split_on_numbers_and_find_first_and_last_match() {
-        let v: Vec<&str> = "one1two2three".split(char::is_numeric).collect();
-        let target_vector: Vec<&str> = vec!["one", "two", "three"];
-
-        let result = combine_first_and_last_of_any_acceptable_target_in_input(
-            "one1two2three",
-            target_vector,
-        );
-        assert_eq!(result, ["one","three"])
+    fn test_conversion_from_word_to_number() {
+        assert_eq!(convert_format_from_word_to_number("one"), 1)
     }
+
+    #[test]
+    fn aho_corasick_application() {
+        use aho_corasick::AhoCorasick;
+
+        let patterns = &["one", "1", "two"];
+        let haystack = "Nobody two 1 one 1 maple in their apple flavored Snapple.";
+
+        let ac = AhoCorasick::new(patterns).unwrap();
+        let mut matches = vec![];
+        for mat in ac.find_iter(haystack) {
+            matches.push(mat);
+        }
+
+        let first_match = matches.get(0).unwrap();
+        let last_match = matches.get(matches.len() - 1).unwrap();
+
+        let first_result = &haystack[first_match.start()..first_match.end()];
+        let last_result = &haystack[last_match.start()..last_match.end()];
+
+        assert_eq!(first_result, "two");
+        assert_eq!(last_result, "1");
+    }
+
+    #[test]
+    fn functional_application_of_algo() {
+        assert_eq!(parse_input_using_aho_corasick("a23"), "23");
+        assert_eq!(parse_input_using_aho_corasick("zoneight234"), "14");
+        assert_eq!(parse_input_using_aho_corasick("7pqrstsixteen"), "76");
+    }
+
+    #[test]
+    fn mixed_vector_round_2_application_of_algo() {
+        let input_vector: Vec<&str> = vec![
+            "two1nine",
+            "eightwothree",
+            "abcone2threexyz",
+            "xtwone3four",
+            "4nineeightseven2",
+            "zoneight234",
+            "7pqrstsixteen",
+        ];
+
+        let input_sum: i32 = modified_sum_of_input_vector(input_vector);
+        assert_eq!(input_sum, 281);
+    }
+
+    #[test]
+    fn handling_single_matches() {
+        assert_eq!(parse_input_using_aho_corasick("a2b"), "22");
+        assert_eq!(parse_input_using_aho_corasick("one3rrbseven3sevenpnnrnrz6"), "16");
+        assert_eq!(parse_input_using_aho_corasick("1sevenseven7ld"), "17");
+        assert_eq!(parse_input_using_aho_corasick("f6four7mttnqsvzmbsqljdzqhcpnprscsggvvsevennine"), "69");
+    }
+
+    #[test]
+    fn fish_for_main_errors() {
+        main()
+    }
+
+
 }
